@@ -1,0 +1,5 @@
+base:
+  '*':
+    - admin
+  'slave*'
+    - web
