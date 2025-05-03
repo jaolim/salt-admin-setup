@@ -17,6 +17,3 @@ apache2service:
     - name: apache2
     - watch:
       - file: /etc/apache2/sites-enabled/default.com.conf
-Disable default site:
-  apache_site.disabled:
-    - name: default
