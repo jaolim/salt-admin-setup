@@ -21,4 +21,4 @@ sshkey:
       - user: control
     - user: control
     - source: salt://admin/id_rsa.pub
-      
+
