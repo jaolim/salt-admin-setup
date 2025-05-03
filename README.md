@@ -1,0 +1,1 @@
+# salt-module-initial-setup-for-remote-control
