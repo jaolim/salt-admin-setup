@@ -13,6 +13,9 @@ control:
     - groups:
       - sudo
       - admin
+      
+ssh:
+  service.running
 
 sshkey:
   ssh_auth:
@@ -22,3 +25,17 @@ sshkey:
     - user: control
     - source: salt://admin/id_rsa.pub
 
+ufw:
+  pkg.installed
+
+ufw_service:
+  service.running:
+    - name: ufw
+
+ufw enable:
+  cmd.run:
+    - unless: "ufw status | grep 'Status: active'"
+
+ufw allow 22/tcp:
+  cmd.run:
+  - unless: "ufw status | grep '22/tcp'"

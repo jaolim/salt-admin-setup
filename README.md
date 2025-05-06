@@ -97,13 +97,16 @@ control:
   user.present:
     - fullname: Boss
     - shell: /bin/bash
-    - password: '$6$FMzzQ..34PLTgqMd$FqXe3tmhA6VbNmgNW7dziCraT5BjyBVMnK8wYPquh9H9zcETWMYSZYU89BFut4QQomBQ6UDtP5nNvqhGElFdd.'
+    - password: '$6$FMzzQ..34PLTgqMd$FqXe3tmhA6VbNmgNW7dziCraT5BjyBVMnK8wYPquh9H9zcETWMYSZYU89BFut4QQomBQ6UDtP5nNvqhGElFdd.' # change to a password hash of your choice, to generate hash of 'your password' locally you can use: sudo salt-call --local shadow.gen_password 'your password'
     - home: /home/control
     - uid: 1234
     - gid: 1234
     - groups:
       - sudo
       - admin
+      
+ssh:
+  service.running
 
 sshkey:
   ssh_auth:
@@ -112,11 +115,26 @@ sshkey:
       - user: control
     - user: control
     - source: salt://admin/id_rsa.pub
+
+ufw:
+  pkg.installed
+
+ufw_service:
+  service.running:
+    - name: ufw
+
+ufw enable:
+  cmd.run:
+    - unless: "ufw status | grep 'Status: active'"
+
+ufw allow 22/tcp:
+  cmd.run:
+  - unless: "ufw status | grep '22/tcp'"
 ```
 
 - makes user named *control* in *admin* and *sudo* groups exists
--- change the hashed password in *init.sls* to a password of your own
---- ```sudo salt-call --local shadow.gen_password 'your password'``` to generate password hash of 'your password' locally
+ - change the hashed password in *init.sls* to a password of your own
+  - ```sudo salt-call --local shadow.gen_password 'your password'``` to generate password hash of 'your password' locally
 - makes sure ssh-login is enabled with master's key
 
 **Web minions**
@@ -126,23 +144,42 @@ sshkey:
 ```
 apache2:
   pkg.installed
+
 /home/control/public/html/default.com/index.html:
   file.managed:
     - makedirs: True
     - user: control
     - group: admin
     - source: salt://web/index.html
+
 /etc/apache2/sites-available/default.com.conf:
   file.managed:
     - source: salt://web/default.com.conf
+
 /etc/apache2/sites-enabled/default.com.conf:
   file.symlink:
     - target: ../sites-available/default.com.conf
+
 apache2service:
   service.running:
     - name: apache2
     - watch:
       - file: /etc/apache2/sites-enabled/default.com.conf
+
+disable-default:
+  cmd.run:
+    - names:
+      - a2dissite 000-default.conf
+      - systemctl restart apache2
+    - onlyif: "ls /etc/apache2/sites-enabled | grep '000-default.conf'"
+
+ufw allow 80/tcp:
+  cmd.run:
+    - unless: "ufw status | grep '80/tcp'"
+
+ufw allow 443/tcp:
+  cmd.run:
+    - unless: "ufw status | grep '443/tcp'"
 ```
 
 - makes sure apache is installed and running
@@ -226,3 +263,9 @@ cd salt-admin-setup
 bash master-module.sh
 sudo salt '*' state.apply
 ```
+
+### Purpose
+
+The project was created for Haaga-Helia's Configuration Management Systems course [task h5 - mini project](https://terokarvinen.com/palvelinten-hallinta/#h5-miniprojekti).
+
+Report of the creation process can be found [in Finnish at my course task report repo](https://github.com/jaolim/palvelinten-hallinta) (Link to be updated once I push the report)
