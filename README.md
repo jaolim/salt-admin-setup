@@ -1,6 +1,6 @@
 # salt-module-initial-setup-for-remote-control
 
-Automate SSH-loginto all minions, enable UFW on all minions, and enable apache with a new virtual host on minions starting with web.
+Automate SSH-login to all minions, enable UFW on all minions, and enable apache with a new virtual host on minions starting with web.
 
 ### Linux installation
 *Instructions for vagrant installation are at bottom under Vagrant setup*
@@ -132,9 +132,9 @@ ufw allow 22/tcp:
     - unless: "ufw status | grep '22/tcp'"
 ```
 
-- makes user named *control* in *admin* and *sudo* groups exists
- - change the hashed password in *init.sls* to a password of your own
-  - ```sudo salt-call --local shadow.gen_password 'your password'``` to generate password hash of 'your password' locally
+- makes sure user named *control* in *admin* and *sudo* groups exists
+  - change the hashed password in *init.sls* to a password of your own
+    - ```sudo salt-call --local shadow.gen_password 'your password'``` to generate password hash of 'your password' locally
 - makes sure ssh-login is enabled with master's key
 - ensures ufw is installed and enabled with 22 port open for tcp connections
 
