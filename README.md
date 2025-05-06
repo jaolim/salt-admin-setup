@@ -1,4 +1,4 @@
-# salt-module-initial-setup-for-remote-control
+# salt-admin-setup
 
 Automate SSH-login to all minions, enable UFW on all minions, and enable apache with a new virtual host on minions starting with web.
 
