@@ -1,6 +1,6 @@
 # salt-module-initial-setup-for-remote-control
 
-Automate SSH-login to all minions and enable apache with new virtual host on minions starting with web.
+Automate SSH-loginto all minions, enable UFW on all minions, and enable apache with a new virtual host on minions starting with web.
 
 ### Linux installation
 *Instructions for vagrant installation are at bottom under Vagrant setup*
@@ -10,7 +10,7 @@ Automate SSH-login to all minions and enable apache with new virtual host on min
 
 **Master:**
 - download and run master.sh file
-- in preferred user's home directory run:
+- in current sudo user's home directory run:
 
 ```
 sudo salt-key -A -y # for accepting all keys without prompt
@@ -129,13 +129,14 @@ ufw enable:
 
 ufw allow 22/tcp:
   cmd.run:
-  - unless: "ufw status | grep '22/tcp'"
+    - unless: "ufw status | grep '22/tcp'"
 ```
 
 - makes user named *control* in *admin* and *sudo* groups exists
  - change the hashed password in *init.sls* to a password of your own
   - ```sudo salt-call --local shadow.gen_password 'your password'``` to generate password hash of 'your password' locally
 - makes sure ssh-login is enabled with master's key
+- ensures ufw is installed and enabled with 22 port open for tcp connections
 
 **Web minions**
 
@@ -166,11 +167,8 @@ apache2service:
     - watch:
       - file: /etc/apache2/sites-enabled/default.com.conf
 
-disable-default:
+a2dissite 000-default.conf && systemctl restart apache2:
   cmd.run:
-    - names:
-      - a2dissite 000-default.conf
-      - systemctl restart apache2
     - onlyif: "ls /etc/apache2/sites-enabled | grep '000-default.conf'"
 
 ufw allow 80/tcp:
@@ -184,6 +182,8 @@ ufw allow 443/tcp:
 
 - makes sure apache is installed and running
 - makes sure virtual host default.com is enabled
+- makes sure apache default virtual host is diables
+- ensures ports 80 and 443 are open for tcp connections
 
 /srv/salt/web/default.com.conf:
 
@@ -268,4 +268,4 @@ sudo salt '*' state.apply
 
 The project was created for Haaga-Helia's Configuration Management Systems course [task h5 - mini project](https://terokarvinen.com/palvelinten-hallinta/#h5-miniprojekti).
 
-Report of the creation process can be found [in Finnish at my course task report repo](https://github.com/jaolim/palvelinten-hallinta) (Link to be updated once I push the report)
+Report of the creation process can be found [in Finnish at my course task report repo](https://github.com/jaolim/palvelinten-hallinta/blob/main/h5-miniprojekti.md)
