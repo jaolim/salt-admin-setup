@@ -22,11 +22,8 @@ apache2service:
     - watch:
       - file: /etc/apache2/sites-enabled/default.com.conf
 
-disable-default:
+a2dissite 000-default.conf && systemctl restart apache2:
   cmd.run:
-    - names:
-      - a2dissite 000-default.conf
-      - systemctl restart apache2
     - onlyif: "ls /etc/apache2/sites-enabled | grep '000-default.conf'"
 
 ufw allow 80/tcp:

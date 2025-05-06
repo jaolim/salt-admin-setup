@@ -38,4 +38,4 @@ ufw enable:
 
 ufw allow 22/tcp:
   cmd.run:
-  - unless: "ufw status | grep '22/tcp'"
+    - unless: "ufw status | grep '22/tcp'"
