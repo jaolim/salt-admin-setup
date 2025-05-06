@@ -1,11 +1,190 @@
 # salt-module-initial-setup-for-remote-control
 
+Automate SSH-login to all minions and enable apache with new virtual host on minions starting with web.
+
+### Linux installation
+*Instructions for vagrant installation are at bottom under Vagrant setup*
+
+**Minion:**
+- download and run minion.sh file
+
+**Master:**
+- download and run master.sh file
+- in preferred user's home directory run:
+
+```
+sudo salt-key -A -y # for accepting all keys without prompt
+git clone https://github.com/jaolim/salt-admin-setup.git
+cd salt-admin-setup
+bash master-module.sh
+sudo salt '*' state.apply
+```
+
+## Contains:
+
+**salt setup:**
+
+master.sh: 
+
+```sudo apt-get update
+sudo apt-get install curl -y
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public | sudo tee /etc/apt/keyrings/salt-archive-keyring.pgp
+curl -fsSL https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.sources | sudo tee /etc/apt/sources.list.d/salt.sources
+sudo apt-get update
+sudo apt-get install salt-master -y
+sudo apt-get install git -y
+```
+- ```bash master.sh``` to set up salt-master
+
+slave.sh: 
+
+```
+sudo apt-get update
+sudo apt-get install curl -y
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://packages.broadcom.com/artifactory/api/security/keypair/SaltProjectKey/public | sudo tee /etc/apt/keyrings/salt-archive-keyring.pgp
+curl -fsSL https://github.com/saltstack/salt-install-guide/releases/latest/download/salt.sources | sudo tee /etc/apt/sources.list.d/salt.sources
+sudo apt-get update
+sudo apt-get install salt-minion -y
+echo "master: 192.168.2.10" | sudo tee -a /etc/salt/minion #update master IP
+sudo systemctl restart salt-minion
+```
+
+- update master's IP unless using the same vagrant setup
+- ```bash slave.sh``` to set up salt-minion
+
+**Module setup:**
+
+master-module.sh:
+
+```
+ssh-keygen -q -t rsa -N "" -f ../.ssh/id_rsa <<< y
+sudo mkdir /srv/salt
+sudo cp -a ./admin /srv/salt/admin
+sudo cp -a ./web /srv/salt/web
+sudo cp -a ../.ssh/id_rsa.pub /srv/salt/admin/id_rsa.pub
+sudo cp -a ./top.sls /srv/salt/top.sls
+
+```
+
+- ```bash master-module.sh``` in master home directory to generate SSH-key and set up modules
+
+**Modules**
+
+/srv/salt/top.sls:
+
+```
+base:
+  '*':
+    - admin
+  'web*':
+    - web
+```
+
+- module configuration for minions based on minion name
+
+**All minions**
+
+/srv/salt/admin/init.sls:
+
+```
+admin:
+  group.present:
+    - gid: 1234
+
+control:
+  user.present:
+    - fullname: Boss
+    - shell: /bin/bash
+    - password: '$6$FMzzQ..34PLTgqMd$FqXe3tmhA6VbNmgNW7dziCraT5BjyBVMnK8wYPquh9H9zcETWMYSZYU89BFut4QQomBQ6UDtP5nNvqhGElFdd.'
+    - home: /home/control
+    - uid: 1234
+    - gid: 1234
+    - groups:
+      - sudo
+      - admin
+
+sshkey:
+  ssh_auth:
+    - present
+    - require:
+      - user: control
+    - user: control
+    - source: salt://admin/id_rsa.pub
+```
+
+- makes user named *control* in *admin* and *sudo* groups exists
+-- change the hashed password in *init.sls* to a password of your own
+--- ```sudo salt-call --local shadow.gen_password 'your password'``` to generate password hash of 'your password' locally
+- makes sure ssh-login is enabled with master's key
+
+**Web minions**
+
+/srv/salt/web/init.sls:
+
+```
+apache2:
+  pkg.installed
+/home/control/public/html/default.com/index.html:
+  file.managed:
+    - makedirs: True
+    - user: control
+    - group: admin
+    - source: salt://web/index.html
+/etc/apache2/sites-available/default.com.conf:
+  file.managed:
+    - source: salt://web/default.com.conf
+/etc/apache2/sites-enabled/default.com.conf:
+  file.symlink:
+    - target: ../sites-available/default.com.conf
+apache2service:
+  service.running:
+    - name: apache2
+    - watch:
+      - file: /etc/apache2/sites-enabled/default.com.conf
+```
+
+- makes sure apache is installed and running
+- makes sure virtual host default.com is enabled
+
+/srv/salt/web/default.com.conf:
+
+```
+<VirtualHost *:80>
+  ServerName default.com
+  ServerAlias www.default.com localhost http://localhost
+  DocumentRoot /home/control/public/html/default.com
+  <Directory /home/control/public/html/default.com>
+    Require all granted
+  </Directory>
+</VirtualHost>
+```
+
+- source file for virtual host
+
+/srv/salt/web/index.html:
+
+```
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8"/>
+		<title>Home</title>
+	</head>
+	<body>
+		<h1>Hello web minion!</h1>
+	</body>
+</html>
+```
+
+- source file for website
+
 ## Vagrant setup
 
-If using vagrant to set up the environment move slave.sh and master.sh to *provision* folder that is in the same directory as vagrantfile.
-Uncomment *minion01* if you want two minions.
+Make vagrantfile with following contents, make a folder called provision in that same folder, and copy slave.sh and master.sh files to that provision folder.
 
-**Vagrantfile:**
+Vagrantfile:
 
 ```
 Vagrant.configure("2") do |config|
@@ -31,4 +210,19 @@ Vagrant.configure("2") do |config|
 #  end
   
 end
+```
+
+- Uncomment *minion01* if you want two minions.
+
+### Installation with vagrant setup
+
+```
+vagrant up
+vagrant reload #Might not be needed, I had issues with salt-key request coming through without reloading
+vagrant ssh master
+sudo salt-key -A -y # for accepting all keys without prompt
+git clone https://github.com/jaolim/salt-admin-setup.git
+cd salt-admin-setup
+bash master-module.sh
+sudo salt '*' state.apply
 ```
